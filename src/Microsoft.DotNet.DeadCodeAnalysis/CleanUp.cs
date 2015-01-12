@@ -48,6 +48,10 @@ namespace Microsoft.DotNet.DeadCodeAnalysis
 
             // TODO: If this loop is through each chain, then we know the index in the chain, and we can assert that we have not seen any varying.
 
+            // TODO: Spans don't need to be combined because we know that we're either going to remove all of the directives, or we're going to
+            // remove the always disabled directives preceding the varying directives.
+            // Two cases for removing all directives: All disabled, or all disabled but one (which could be at the beginning, in the middle, or at the end).
+
             foreach (var region in info.Regions)
             {
                 switch (region.State)
