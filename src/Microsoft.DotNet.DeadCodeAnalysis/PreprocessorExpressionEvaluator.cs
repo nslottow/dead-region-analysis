@@ -9,102 +9,78 @@ using System.Threading.Tasks;
 
 namespace Microsoft.DotNet.DeadCodeAnalysis
 {
-    internal class PreprocessorExpressionEvaluator : CSharpSyntaxVisitor<SymbolState>
+    internal class PreprocessorExpressionEvaluator : CSharpSyntaxVisitor<Tristate>
     {
-        private Dictionary<string, SymbolState> m_symbolStates;
+        private Dictionary<string, Tristate> m_symbolStates;
 
-        public PreprocessorExpressionEvaluator(Dictionary<string, SymbolState> symbolStates)
+        public PreprocessorExpressionEvaluator(Dictionary<string, Tristate> symbolStates)
         {
             Debug.Assert(symbolStates != null);
             m_symbolStates = symbolStates;
         }
 
-        public override SymbolState VisitLiteralExpression(LiteralExpressionSyntax node)
+        public override Tristate VisitLiteralExpression(LiteralExpressionSyntax node)
         {
             switch (node.CSharpKind())
             {
                 case SyntaxKind.TrueLiteralExpression:
-                    return SymbolState.AlwaysEnabled;
+                    return Tristate.True;
                 case SyntaxKind.FalseLiteralExpression:
-                    return SymbolState.AlwaysDisabled;
+                    return Tristate.False;
                 default:
-                    Debug.Assert(false, "Preprocessor expressions can only have true & false literals");
-                    return SymbolState.Varying;
+                    throw new InvalidPreprocessorExpressionException("Expected true or false literal expression");
             }
         }
 
-        public override SymbolState VisitIdentifierName(IdentifierNameSyntax node)
+        public override Tristate VisitIdentifierName(IdentifierNameSyntax node)
         {
-            SymbolState state;
+            Tristate state;
             if (m_symbolStates.TryGetValue(node.ToString(), out state))
             {
                 return state;
             }
             else
             {
-                return SymbolState.AlwaysDisabled;
+                return Tristate.False;
             }
         }
 
-        public override SymbolState VisitPrefixUnaryExpression(PrefixUnaryExpressionSyntax node)
+        public override Tristate VisitPrefixUnaryExpression(PrefixUnaryExpressionSyntax node)
         {
-            Debug.Assert(node.CSharpKind() == SyntaxKind.LogicalNotExpression);
+            if (node.CSharpKind() != SyntaxKind.LogicalNotExpression)
+            {
+                throw new InvalidPreprocessorExpressionException("Expected logical not expression");
+            }
 
-            SymbolState innerState = node.Operand.Accept(this);
-            if (innerState == SymbolState.Varying)
-            {
-                return SymbolState.Varying;
-            }
-            else
-            {
-                // Negate the inner state
-                return (SymbolState)((int)innerState ^ 1);
-            }
+            return !node.Operand.Accept(this);
         }
 
-        public override SymbolState VisitBinaryExpression(BinaryExpressionSyntax node)
+        public override Tristate VisitBinaryExpression(BinaryExpressionSyntax node)
         {
-            SymbolState left = node.Left.Accept(this);
-            SymbolState right = node.Right.Accept(this);
+            Tristate left = node.Left.Accept(this);
+            Tristate right = node.Right.Accept(this);
 
             switch (node.CSharpKind())
             {
                 case SyntaxKind.LogicalAndExpression:
-                    if (left == SymbolState.AlwaysDisabled || right == SymbolState.AlwaysDisabled)
-                    {
-                        // false && anything == false
-                        return SymbolState.AlwaysDisabled;
-                    }
-                    if (left == SymbolState.AlwaysEnabled && right == SymbolState.AlwaysEnabled)
-                    {
-                        // true && true == true
-                        return SymbolState.AlwaysEnabled;
-                    }
-                    // true && varying == varying
-                    return SymbolState.Varying;
-
+                    return left & right;
                 case SyntaxKind.LogicalOrExpression:
-                    if (left == SymbolState.AlwaysEnabled || right == SymbolState.AlwaysEnabled)
-                    {
-                        // true || anything == true
-                        return SymbolState.AlwaysEnabled;
-                    }
-                    if (left == SymbolState.AlwaysDisabled && right == SymbolState.AlwaysDisabled)
-                    {
-                        // false || false == false
-                        return SymbolState.AlwaysDisabled;
-                    }
-                    // false || varying == varying
-                    return SymbolState.Varying;
+                    return left | right;
                 default:
-                    Debug.Assert(false, "Preprocessor expressions can only have logical or/and binary expressions");
-                    return SymbolState.Varying;
+                    throw new InvalidPreprocessorExpressionException("Expected logical and/or expression");
             }
         }
 
-        public override SymbolState VisitParenthesizedExpression(ParenthesizedExpressionSyntax node)
+        public override Tristate VisitParenthesizedExpression(ParenthesizedExpressionSyntax node)
         {
             return node.Expression.Accept(this);
+        }
+    }
+
+    internal class InvalidPreprocessorExpressionException : Exception
+    {
+        public InvalidPreprocessorExpressionException(string message) : base(message)
+        {
         }
     }
 }
