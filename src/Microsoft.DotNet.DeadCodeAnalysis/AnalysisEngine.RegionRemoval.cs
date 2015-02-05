@@ -41,7 +41,8 @@ namespace Microsoft.DotNet.DeadCodeAnalysis
 
                 foreach (var change in changes)
                 {
-                    changesString.AppendLine(Location.Create(syntaxTree, change.Span).GetLineSpan().ToString());
+                    var lineSpan = Location.Create(syntaxTree, change.Span).GetLineSpan();
+                    changesString.AppendFormat("({0}-{1}): {2}", lineSpan.StartLinePosition.Line, lineSpan.EndLinePosition.Line, newText.GetSubText(change.Span).ToString());
                 }
 
                 Console.WriteLine(string.Format("Failed to remove regions from document '{0}':{1}{2}", info.Document.FilePath, Environment.NewLine, changesString.ToString()));
