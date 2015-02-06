@@ -324,7 +324,7 @@ class D {}
             Verify(source, expected);
         }
 
-        [Fact(Skip = "Not Implemented")]
+        [Fact]
         public void RemovePrecedingWhitespace()
         {
             var source = @"
@@ -339,7 +339,7 @@ class A { }
             Verify(source, expected);
         }
 
-        [Fact(Skip = "Not Implemented")]
+        [Fact]
         public void RemovePrecedingWhitespace2()
         {
             var source = @"
@@ -360,7 +360,7 @@ class A
             Verify(source, expected);
         }
 
-        [Fact(Skip = "Not Implemented")]
+        [Fact]
         public void RemoveProcedingWhitespace()
         {
             var source = @"
@@ -375,7 +375,7 @@ class A { }
             Verify(source, expected);
         }
 
-        [Fact(Skip = "Not Implemented")]
+        [Fact]
         public void RemoveProcedingWhitespace2()
         {
             var source = @"
@@ -396,7 +396,7 @@ class A
             Verify(source, expected);
         }
 
-        [Fact(Skip = "Not Implemented")]
+        [Fact]
         public void RemoveSurroundingWhitespace()
         {
             var source = @"

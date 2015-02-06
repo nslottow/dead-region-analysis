@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -21,18 +22,18 @@ namespace Microsoft.DotNet.DeadRegionAnalysis
                 throw new ArgumentNullException("info");
             }
 
-            var changes = CalculateTextChanges(info.Chains);
+            var text = await info.Document.GetTextAsync(cancellationToken);
+            var changes = CalculateTextChanges(info.Chains, text);
             if (changes == null || changes.Count == 0)
             {
                 return info.Document;
             }
 
             // Remove the unnecessary spans from the end of the document to the beginning to preserve character positions
-            var newText = await info.Document.GetTextAsync(cancellationToken);
 
             try
             {
-                newText = newText.WithChanges(changes);
+                text = text.WithChanges(changes);
             }
             catch (Exception)
             {
@@ -42,17 +43,17 @@ namespace Microsoft.DotNet.DeadRegionAnalysis
                 foreach (var change in changes)
                 {
                     var lineSpan = Location.Create(syntaxTree, change.Span).GetLineSpan();
-                    changesString.AppendFormat("({0}-{1}): {2}", lineSpan.StartLinePosition.Line, lineSpan.EndLinePosition.Line, newText.GetSubText(change.Span).ToString());
+                    changesString.AppendFormat("({0}-{1}): {2}", lineSpan.StartLinePosition.Line, lineSpan.EndLinePosition.Line, text.GetSubText(change.Span).ToString());
                 }
 
                 Console.WriteLine(string.Format("Failed to remove regions from document '{0}':{1}{2}", info.Document.FilePath, Environment.NewLine, changesString.ToString()));
                 return info.Document;
             }
 
-            return info.Document.WithText(newText);
+            return info.Document.WithText(text);
         }
 
-        private static List<TextChange> CalculateTextChanges(List<ConditionalRegionChain> chains)
+        private static List<TextChange> CalculateTextChanges(List<ConditionalRegionChain> chains, SourceText text)
         {
             var changes = new List<TextChange>();
 
@@ -63,6 +64,7 @@ namespace Microsoft.DotNet.DeadRegionAnalysis
                 CalculateTextChanges(chain, changes);
             }
 
+            ExpandToIncludeSurroundingNewLines(changes, text.ToString());
             changes.Sort(CompareTextChanges);
             return MergeOverlappingRegions(changes);
         }
@@ -161,6 +163,40 @@ namespace Microsoft.DotNet.DeadRegionAnalysis
             }
 
             return result;
+        }
+
+        private static void ExpandToIncludeSurroundingNewLines(List<TextChange> changes, string text)
+        {
+            for (int i = 0; i < changes.Count; i++)
+            {
+                changes[i] = ExpandToIncludeSurroundingNewLines(changes[i], text);
+            }
+        }
+
+        private static readonly Regex s_backwardNewlineExpansionRegex = new Regex(@"(\n\r?){2,}\G", RegexOptions.RightToLeft | RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant);
+        private static readonly Regex s_forwardNewlineExpansionRegex = new Regex(@"\G(\r?\n){1,}", RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant);
+
+        private static TextChange ExpandToIncludeSurroundingNewLines(TextChange change, string text)
+        {
+            if (change.Span.Start > 0)
+            {
+                var match = s_backwardNewlineExpansionRegex.Match(text, change.Span.Start);
+                if (match.Success)
+                {
+                    change = new TextChange(new TextSpan(match.Index, change.Span.End - match.Index), change.NewText);
+                }
+            }
+
+            if (change.Span.End < text.Length)
+            {
+                var match = s_forwardNewlineExpansionRegex.Match(text, change.Span.End);
+                if (match.Success)
+                {
+                    change = new TextChange(new TextSpan(change.Span.Start, change.Span.Length + match.Length), change.NewText);
+                }
+            }
+
+            return change;
         }
 
         private static List<TextChange> MergeOverlappingRegions(List<TextChange> changes)
