@@ -50,7 +50,6 @@ class A
 class A
 {
     // F
-
     // G
     public int G;
 }
@@ -349,8 +348,6 @@ class A
 #if false
 #endif
 }
-
-
 ";
             var expected = @"
 class A
@@ -385,8 +382,6 @@ class A
 #endif
 
 }
-
-
 ";
             var expected = @"
 class A
@@ -407,8 +402,6 @@ class A
 #endif
 
 }
-
-
 ";
             var expected = @"
 class A

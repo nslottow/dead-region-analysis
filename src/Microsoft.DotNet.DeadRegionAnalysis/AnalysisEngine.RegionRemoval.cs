@@ -173,7 +173,7 @@ namespace Microsoft.DotNet.DeadRegionAnalysis
             }
         }
 
-        private static readonly Regex s_backwardNewlineExpansionRegex = new Regex(@"(\n\r?){2,}\G", RegexOptions.RightToLeft | RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant);
+        private static readonly Regex s_backwardNewlineExpansionRegex = new Regex(@"(\r?\n){2,}\G", RegexOptions.RightToLeft | RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant);
         private static readonly Regex s_forwardNewlineExpansionRegex = new Regex(@"\G(\r?\n){1,}", RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant);
 
         private static TextChange ExpandToIncludeSurroundingNewLines(TextChange change, string text)
@@ -183,7 +183,7 @@ namespace Microsoft.DotNet.DeadRegionAnalysis
                 var match = s_backwardNewlineExpansionRegex.Match(text, change.Span.Start);
                 if (match.Success)
                 {
-                    change = new TextChange(new TextSpan(match.Index, change.Span.End - match.Index), change.NewText);
+                    change = new TextChange(new TextSpan(match.Index, change.Span.End - match.Index), Environment.NewLine);
                 }
             }
 
@@ -218,7 +218,7 @@ namespace Microsoft.DotNet.DeadRegionAnalysis
                         // In the case that this change ends where the previous change ends, we need to take
                         // the replacement text of this change, because it is possible for end directives to
                         // need non-empty replacement.
-                        change = new TextChange(new TextSpan(change.Span.Start, nextChange.Span.End - change.Span.Start), nextChange.NewText);
+                        change = new TextChange(new TextSpan(change.Span.Start, nextChange.Span.End - change.Span.Start), change.NewText + nextChange.NewText);
                         i = j;
                     }
                 }
