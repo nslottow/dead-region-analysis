@@ -91,4 +91,9 @@ namespace Microsoft.DotNet.DeadRegionAnalysis
         {
         }
     }
+
+    internal class CompoundPreprocessorExpressionEvaluator
+    {
+
+    }
 }
