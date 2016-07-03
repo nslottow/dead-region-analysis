@@ -1,5 +1,7 @@
 # deadregions
 
+NOTE: This tool was merged into [dotnet/codeformatter](https://github.com/dotnet/codeformatter).
+
 Tool for analyzing and cleaning up unnecessary ("dead") conditional regions in C# code.
 
 An unnecessary conditional region is one conditioned on a preprocessor expression that, across all possible build configurations for a given project, always evaluates to `true` or always evaluates to `false`. Such regions are either dead code (if conditioned on `false`) or have unnecessary preprocessor directives (if conditioned on `true`). Conversely, regions conditioned on preprocessor expressions which evaluate differently across different build configurations have meaningful preprocessor directives.
